@@ -38,7 +38,8 @@ GIO_REQUIRED_VERSION=2.50.0
 GTK_REQUIRED_VERSION=3.22.0
 CANBERRA_REQUIRED_VERSION=0.13
 MATE_MIXER_REQUIRED_VERSION=1.10.0
-MATE_DESKTOP_REQUIRED_VERSION=1.27.1
+MATE_DESKTOP_REQUIRED_VERSION=1.17.0
+MATE_DESKTOP_IMAGE_MENU_ITEM_VERSION=1.27.1
 LIBPANEL4_REQUIRED=1.17.0
 GTK_LAYER_SHELL_REQUIRED_VERSION=0.6
 GDK_WAYLAND_REQUIRED_VERSION=3.22.0
@@ -61,6 +62,12 @@ PKG_CHECK_MODULES(VOLUME_CONTROL,
 
 AC_SUBST(VOLUME_CONTROL_CFLAGS)
 AC_SUBST(VOLUME_CONTROL_LIBS)
+
+dnl MateImageMenuItem only exists since mate-desktop 1.27.1; fall back to
+dnl GtkImageMenuItem when building against older releases (e.g. 1.26).
+PKG_CHECK_EXISTS([mate-desktop-2.0 >= $MATE_DESKTOP_IMAGE_MENU_ITEM_VERSION],
+                 [AC_DEFINE([HAVE_MATE_IMAGE_MENU_ITEM], [1],
+                            [Define if mate-desktop provides MateImageMenuItem])])
 
 dnl=======================================================================
 dnl GLib

@@ -113,7 +113,11 @@ gio_unix = dependency('gio-unix-2.0', version : '>= 2.50.0')
 gdk = dependency('gdk-3.0', version : '>= 3.22.0')
 matemixer = dependency('libmatemixer', version : '>= 1.10.0')
 canberra = dependency('libcanberra-gtk3', version : '>= 0.13')
-md = dependency('mate-desktop-2.0', version : '>= 1.27.1')
+md = dependency('mate-desktop-2.0', version : '>= 1.17.0')
+# MateImageMenuItem only exists since mate-desktop 1.27.1
+if md.version().version_compare('>= 1.27.1')
+  conf.set('HAVE_MATE_IMAGE_MENU_ITEM', 1)
+endif
 matepanel = dependency('libmatepanelapplet-4.0', version : '>= 1.17.0',required: enable_applet)
 libxml = dependency('libxml-2.0')
 libm = cc.find_library('m', required: false)

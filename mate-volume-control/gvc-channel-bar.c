@@ -757,6 +757,28 @@ gvc_channel_bar_set_extended (GvcChannelBar *bar, gboolean extended)
         g_object_notify_by_pspec (G_OBJECT (bar), properties[PROP_EXTENDED]);
 }
 
+/* The "volume-overamplifiable" key was added to org.mate.sound in
+ * mate-desktop 1.27.x; older schemas (e.g. mate-desktop 1.26) lack it and
+ * g_settings_bind() aborts on unknown keys, so callers must check first. */
+gboolean
+gvc_sound_settings_has_overamplifiable (GSettings *settings)
+{
+        GSettingsSchema *schema = NULL;
+        gboolean         has_key;
+
+        if (settings == NULL)
+                return FALSE;
+
+        g_object_get (settings, "settings-schema", &schema, NULL);
+        if (schema == NULL)
+                return FALSE;
+
+        has_key = g_settings_schema_has_key (schema, GVC_SOUND_OVERAMPLIFIABLE_KEY);
+        g_settings_schema_unref (schema);
+
+        return has_key;
+}
+
 const gchar *
 gvc_channel_bar_get_name (GvcChannelBar *bar)
 {

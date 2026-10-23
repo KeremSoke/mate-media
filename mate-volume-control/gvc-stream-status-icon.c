@@ -20,6 +20,8 @@
  *
  */
 
+#include "config.h"
+
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <gio/gdesktopappinfo.h>
@@ -30,7 +32,15 @@
 
 #define MATE_DESKTOP_USE_UNSTABLE_API
 #include <libmate-desktop/mate-desktop-utils.h>
+#ifdef HAVE_MATE_IMAGE_MENU_ITEM
 #include <libmate-desktop/mate-image-menu-item.h>
+#else
+/* mate-desktop < 1.27.1 has no MateImageMenuItem, use the GTK one */
+#define MATE_IMAGE_MENU_ITEM                    GTK_IMAGE_MENU_ITEM
+#define mate_image_menu_item_new_with_label     gtk_image_menu_item_new_with_label
+#define mate_image_menu_item_new_with_mnemonic  gtk_image_menu_item_new_with_mnemonic
+#define mate_image_menu_item_set_image          gtk_image_menu_item_set_image
+#endif
 
 #include "gvc-channel-bar.h"
 #include "gvc-mpris-manager.h"
@@ -52,6 +62,8 @@ struct _GvcStreamStatusIconPrivate
         GtkWidget              *bar;
         GvcMprisPlayer         *player;
         gboolean                player_widget_visible;
+        GtkOrientation          tray_orientation;
+        gboolean                volume_first;
         guint                   current_icon;
         gchar                  *display_name;
         MateMixerStreamControl *control;
@@ -117,6 +129,10 @@ configure_dock_layout (GvcStreamStatusIcon *icon,
                        gboolean             volume_first)
 {
         gboolean vertical_tray;
+
+        /* Remember the placement so player updates can re-apply it */
+        icon->priv->tray_orientation = tray_orientation;
+        icon->priv->volume_first = volume_first;
 
         vertical_tray = tray_orientation == GTK_ORIENTATION_VERTICAL;
 
@@ -1120,7 +1136,9 @@ gvc_stream_status_icon_set_player_widget (GvcStreamStatusIcon *icon,
                                        1);
         }
 
-        configure_dock_layout (icon, GTK_ORIENTATION_HORIZONTAL, FALSE);
+        configure_dock_layout (icon,
+                               icon->priv->tray_orientation,
+                               icon->priv->volume_first);
 }
 
 static void
@@ -1159,12 +1177,21 @@ gvc_stream_status_icon_set_player_widget_visible (GvcStreamStatusIcon *icon,
 {
         g_return_if_fail (GVC_IS_STREAM_STATUS_ICON (icon));
 
+        if (icon->priv->player_widget_visible == visible)
+                return;
+
         icon->priv->player_widget_visible = visible;
 
         if (icon->priv->player_separator != NULL)
                 gtk_widget_set_visible (icon->priv->player_separator, visible);
 
-        configure_dock_layout (icon, GTK_ORIENTATION_HORIZONTAL, FALSE);
+        /* The dock is gone once the icon has been disposed */
+        if (icon->priv->dock == NULL)
+                return;
+
+        configure_dock_layout (icon,
+                               icon->priv->tray_orientation,
+                               icon->priv->volume_first);
 }
 
 void
@@ -1413,13 +1440,15 @@ gvc_stream_status_icon_init (GvcStreamStatusIcon *icon)
         gvc_channel_bar_set_show_mark_text (GVC_CHANNEL_BAR (icon->priv->bar),
                                             FALSE);
 
-        g_settings_bind (icon->priv->sound_settings, "volume-overamplifiable",
-                         icon->priv->bar,            "show-marks",
-                         G_SETTINGS_BIND_GET);
+        if (gvc_sound_settings_has_overamplifiable (icon->priv->sound_settings)) {
+                g_settings_bind (icon->priv->sound_settings, GVC_SOUND_OVERAMPLIFIABLE_KEY,
+                                 icon->priv->bar,            "show-marks",
+                                 G_SETTINGS_BIND_GET);
 
-        g_settings_bind (icon->priv->sound_settings, "volume-overamplifiable",
-                         icon->priv->bar,            "extended",
-                         G_SETTINGS_BIND_GET);
+                g_settings_bind (icon->priv->sound_settings, GVC_SOUND_OVERAMPLIFIABLE_KEY,
+                                 icon->priv->bar,            "extended",
+                                 G_SETTINGS_BIND_GET);
+        }
 
         toplevel = gtk_widget_get_toplevel (icon->priv->dock);
         context = gtk_widget_get_style_context (GTK_WIDGET (toplevel));

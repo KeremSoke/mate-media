@@ -110,6 +110,10 @@ void                gvc_channel_bar_set_size_group      (GvcChannelBar      *bar
 gboolean            gvc_channel_bar_scroll              (GvcChannelBar      *bar,
                                                          GdkScrollDirection  direction);
 
+#define GVC_SOUND_OVERAMPLIFIABLE_KEY "volume-overamplifiable"
+
+gboolean            gvc_sound_settings_has_overamplifiable (GSettings       *settings);
+
 G_END_DECLS
 
 #endif /* __GVC_CHANNEL_BAR_H */

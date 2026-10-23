@@ -1983,6 +1983,7 @@ gvc_mixer_dialog_constructor (GType                  type,
         gsize             i;
         const GList      *list;
         GClosure         *closure = NULL;
+        gboolean          has_overamplifiable;
 
         object = G_OBJECT_CLASS (gvc_mixer_dialog_parent_class)->constructor (type,
                                                                               n_construct_properties,
@@ -1991,6 +1992,7 @@ gvc_mixer_dialog_constructor (GType                  type,
         self = GVC_MIXER_DIALOG (object);
 
         self->priv->sound_settings = g_settings_new ("org.mate.sound");
+        has_overamplifiable = gvc_sound_settings_has_overamplifiable (self->priv->sound_settings);
 
         gtk_dialog_add_button (GTK_DIALOG (self), "gtk-close", GTK_RESPONSE_OK);
 
@@ -2010,9 +2012,10 @@ gvc_mixer_dialog_constructor (GType                  type,
         gvc_channel_bar_set_name (GVC_CHANNEL_BAR (self->priv->output_bar),
                                   _("_Output volume: "));
 
-        g_settings_bind (self->priv->sound_settings, "volume-overamplifiable",
-                         self->priv->output_bar,     "extended",
-                         G_SETTINGS_BIND_GET);
+        if (has_overamplifiable)
+                g_settings_bind (self->priv->sound_settings, GVC_SOUND_OVERAMPLIFIABLE_KEY,
+                                 self->priv->output_bar,     "extended",
+                                 G_SETTINGS_BIND_GET);
 
         gtk_widget_show (self->priv->output_bar);
         gtk_widget_set_sensitive (self->priv->output_bar, FALSE);
@@ -2023,9 +2026,15 @@ gvc_mixer_dialog_constructor (GType                  type,
         self->priv->volume_overamplifiable_button =
                 gtk_check_button_new_with_mnemonic (_("Allow volume to e_xceed 100%"));
 
-        g_settings_bind (self->priv->sound_settings,                "volume-overamplifiable",
-                         self->priv->volume_overamplifiable_button, "active",
-                         G_SETTINGS_BIND_GET|G_SETTINGS_BIND_SET);
+        if (has_overamplifiable) {
+                g_settings_bind (self->priv->sound_settings,                GVC_SOUND_OVERAMPLIFIABLE_KEY,
+                                 self->priv->volume_overamplifiable_button, "active",
+                                 G_SETTINGS_BIND_GET|G_SETTINGS_BIND_SET);
+        } else {
+                /* Older org.mate.sound schema: nothing to store it in */
+                gtk_widget_set_no_show_all (self->priv->volume_overamplifiable_button, TRUE);
+                gtk_widget_hide (self->priv->volume_overamplifiable_button);
+        }
 
         gtk_box_pack_start (GTK_BOX (self->priv->output_stream_box),
                             self->priv->volume_overamplifiable_button,
